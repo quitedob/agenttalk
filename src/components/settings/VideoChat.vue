@@ -7,7 +7,7 @@
         <input type="hidden" id="sessionid" value="0">
 
         <div class="header">
-          <a href="#" class="back-link">
+          <a href="javascript:void(0);" @click="goBack" class="back-link">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
@@ -113,6 +113,9 @@ const isConnecting = ref(false);
 // 聊天输入框内容
 const newMessage = ref('');
 // 聊天消息列表
+const goBack = () => {
+  window.history.back();
+};
 const chatMessages = ref([
   { text: '你好！我是您的专属AI数字人，准备好开始对话了吗？', sender: 'bot', time: `系统 · ${new Date().toLocaleTimeString()}` }
 ]);

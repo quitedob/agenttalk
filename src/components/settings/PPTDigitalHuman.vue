@@ -3,7 +3,7 @@
     <router-link to="/" class="back-link">返回聊天</router-link>
 
     <div class="background-image-container">
-      <img src="@/assets/1.png" alt="PPT Background" class="background-image" />
+      <img src="@/assets/pptdemo.png" alt="PPT Background" class="background-image" />
     </div>
 
     <div class="subtitle">PPTDemo演示 - 可拖拽视频窗口</div>
