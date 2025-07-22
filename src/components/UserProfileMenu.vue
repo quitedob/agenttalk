@@ -4,14 +4,13 @@
     <div v-if="isMenuOpen" class="menu-dropdown">
       <div class="menu-header">用户</div>
       <div class="menu-items">
-        <a href="#" class="menu-item">我的订阅</a>
-        <a href="#" class="menu-item">自定义Agent</a>
         <router-link to="/digital-human" class="menu-item">数字人</router-link>
         <router-link to="/ppt-digital-human" class="menu-item">PPT数字人</router-link>
         <router-link to="/video-chat" class="menu-item">视频聊天</router-link>
         <a href="#" class="menu-item" @click.prevent="openSettings">设置</a>
         <router-link to="/help" class="menu-item">帮助与常见问题解答</router-link>
         <router-link to="/policies" class="menu-item">条款与政策</router-link>
+        <router-link to="/plan" class="menu-item">规划</router-link>
         <div class="menu-item theme-toggle" @click="onToggleTheme">
           <span>{{ currentTheme === 'dark' ? '亮色模式' : '暗色模式' }}</span>
           <span class="theme-icon">{{ currentTheme === 'dark' ? '☀️' : '🌙' }}</span>

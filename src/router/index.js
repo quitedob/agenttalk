@@ -6,6 +6,9 @@ import TermsAndPolicies from '@/views/TermsAndPolicies.vue'; // 2. 引入条款�
 import DigitalHuman from '@/views/DigitalHuman.vue'; // (新增) 引入数字人组件
 import PPTDigitalHuman from '@/components/settings/PPTDigitalHuman.vue';
 import VideoChat from '@/components/settings/VideoChat.vue';
+import PlanPage from '@/components/settings/PlanPage.vue';
+import Plan1 from '@/components/settings/plan/Plan1.vue';
+import Plan2 from '@/components/settings/plan/Plan2.vue';
 
 const routes = [
     {
@@ -40,6 +43,21 @@ const routes = [
         path: '/video-chat',
         name: 'VideoChat',
         component: VideoChat
+    },
+    {
+        path: '/plan',
+        name: 'PlanPage',
+        component: PlanPage
+    },
+    {
+        path: '/plan/1',
+        name: 'Plan1',
+        component: Plan1
+    },
+    {
+        path: '/plan/2',
+        name: 'Plan2',
+        component: Plan2
     }
 ];
 
