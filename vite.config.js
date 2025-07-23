@@ -16,7 +16,11 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',       // 简化注释：监听所有地址，允许局域网访问
     port: 3001,            // 简化注释：开发服务器端口
-
+    // hmr: {
+    //   host: '117.50.179.83',
+    //   protocol: 'ws',
+    //   port: 3000,
+    // },
     // --- 新增的代理配置 ---
     proxy: {
       // 简化注释：将所有以 /human, /offer, /answer, /candidate 开头的请求代理到 8010 端口

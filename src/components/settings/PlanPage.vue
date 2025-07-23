@@ -17,6 +17,12 @@
           <p>探索从旧版到集成 MuseTalk 1.5 与 FunASR 的核心技术演进。</p>
         </div>
       </router-link>
+      <router-link to="/plan/3" class="plan-link-card">
+        <div class="card-content">
+          <h2>实时语音驱动数字人企业架构</h2>
+          <p>整合 FunASR 与 Ollama 的架构重构方案</p>
+        </div>
+      </router-link>
     </div>
      <router-link to="/" class="back-link">← 返回主页</router-link>
   </div>
