@@ -7,7 +7,7 @@
           <h1>数字人交互平台</h1>
         </div>
         <div class="language-switch">
-           <router-link to="/" class="back-link">← 返回聊天</router-link>
+          <router-link to="/" class="back-link">← 返回聊天</router-link>
           <button class="lang-btn active" data-lang="zh">中文</button>
           <button class="lang-btn" data-lang="en">English</button>
         </div>
@@ -33,6 +33,13 @@
               <button id="btn_stop_record" class="btn-record" disabled><span data-translate="stopRecording">停止录制</span></button>
             </div>
           </div>
+
+          <div class="control-group">
+            <h3><i>🎙️</i> <span data-translate="asrResultTitle">语音识别结果 (字幕)</span></h3>
+            <div id="asr-result-container" class="asr-result-container">
+              <p id="asr-text">{{ asrText }}</p>
+            </div>
+          </div>
           <div class="control-group">
             <h3><i>💬</i> <span data-translate="interaction">数字人交互</span></h3>
             <form id="echo-form">
@@ -53,7 +60,7 @@
               <div id="video-status-dot" class="status-dot"></div>
               <span id="video-status" data-translate="videoStatus">视频: 未启动</span>
             </div>
-             <div class="status-item">
+            <div class="status-item">
               <div id="ice-status-dot" class="status-dot"></div>
               <span id="ice-status">ICE: 未开始</span>
             </div>
@@ -75,7 +82,7 @@
         </div>
       </div>
       <div class="footer">
-        <p data-translate="footerText">© 2023 数字人交互平台 | 基于WebRTC的下一代AI交互系统</p>
+        <p data-translate="footerText">© 2025 数字人交互平台 | 基于WebRTC的下一代AI交互系统</p>
       </div>
     </div>
   </div>
@@ -84,19 +91,21 @@
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue';
 import { streamChat } from '@/services/ollama';
-import { useChatStore } from '@/store'; // 1. (保持) 引入 Pinia store
+import { useChatStore } from '@/store';
 
-// 响应式变量，用于存储来自 Ollama 的消息
+// --- 响应式变量 ---
 const ollamaResponse = ref('');
-const chatStore = useChatStore(); // 2. (保持) 获取 store 实例
+const chatStore = useChatStore();
+const asrText = ref('请点击"开始"按钮并对麦克风说话...'); // 简化注释：用于存放ASR字幕的响应式变量
+let asrPollingInterval = null; // 简化注释：用于存储ASR轮询定时器的ID
 
-// 简化注释：用于存储已加载的脚本元素
+// --- 脚本加载 ---
 let loadedScripts = [];
 const loadScript = (src) => {
   return new Promise((resolve, reject) => {
     const script = document.createElement('script');
     script.src = src;
-    script.async = false; // 简化注释：确保脚本按顺序执行
+    script.async = false;
     script.onload = () => {
       console.log(`脚本已加载: ${src}`);
       loadedScripts.push(script);
@@ -107,69 +116,96 @@ const loadScript = (src) => {
   });
 };
 
+// --- ASR 轮询逻辑 ---
+/**
+ * 简化注释：从后端获取ASR识别结果
+ */
+const fetchAsrResult = async () => {
+  const sessionid = parseInt(document.getElementById('sessionid').value, 10);
+  if (sessionid === 0) {
+    return; // 简化注释：如果会话ID无效则不执行
+  }
+
+  try {
+    const response = await fetch('/asr_result', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionid: sessionid }),
+    });
+    const data = await response.json();
+    if (data.code === 0 && data.text) {
+      console.log('收到ASR文本:', data.text);
+      // 简化注释：将新获取的文本追加到已有文本后面，实现对话记录效果
+      const cleanedText = data.text.replace(/^ASR: /i, ''); // 简化注释：移除后端可能附带的 "ASR: " 前缀
+      asrText.value += cleanedText;
+    }
+  } catch (error) {
+    console.error('获取ASR结果失败:', error);
+  }
+};
+
+/**
+ * 简化注释：开始轮询获取ASR结果
+ */
+const startAsrPolling = () => {
+  if (asrPollingInterval) {
+    clearInterval(asrPollingInterval); // 简化注释：先清除已有的定时器，防止重复
+  }
+  asrText.value = ''; // 简化注释：每次开始时清空之前的字幕
+  // 简化注释：每800毫秒调用一次fetchAsrResult函数
+  asrPollingInterval = setInterval(fetchAsrResult, 800);
+};
+
+/**
+ * 简化注释：停止轮询
+ */
+const stopAsrPolling = () => {
+  if (asrPollingInterval) {
+    clearInterval(asrPollingInterval);
+    asrPollingInterval = null;
+    console.log('ASR轮询已停止。');
+  }
+};
+
+
+// --- 页面核心逻辑 ---
 const initializePageLogic = () => {
-  // 简化注释：确保 jQuery 已加载
   const $ = window.jQuery;
   if (!$) {
     console.error("jQuery 不可用，初始化中止。");
     return;
   }
 
-  // 简化注释：多语言翻译文本
   const translations = {
-    zh: { controlPanel: "控制面板", useStun: "使用STUN服务器", start: "开始", stop: "停止", recording: "录制控制", startRecording: "开始录制", stopRecording: "停止录制", interaction: "数字人交互", inputText: "输入文本", inputPlaceholder: "输入您想对数字人说的话...", send: "发送", mediaDisplay: "媒体展示", connectionStatus: "连接状态: 未连接", videoStatus: "视频: 未启动", footerText: "© 2025 数字人交互平台 | 基于WebRTC的下一代AI交互系统" },
-    en: { controlPanel: "Control Panel", useStun: "Use STUN Server", start: "Start", stop: "Stop", recording: "Recording Control", startRecording: "Start Recording", stopRecording: "Stop Recording", interaction: "Digital Human Interaction", inputText: "Input Text", inputPlaceholder: "Enter text to interact with digital human...", send: "Send", mediaDisplay: "Media Display", connectionStatus: "Connection: Disconnected", videoStatus: "Video: Not Started", footerText: "© 2023 Digital Human Platform | Next-gen AI Interaction System" }
+    zh: { controlPanel: "控制面板", useStun: "使用STUN服务器", start: "开始", stop: "停止", recording: "录制控制", startRecording: "开始录制", stopRecording: "停止录制", asrResultTitle: "语音识别结果 (字幕)", interaction: "数字人交互", inputText: "输入文本", inputPlaceholder: "输入您想对数字人说的话，或直接说话...", send: "发送", mediaDisplay: "媒体展示", connectionStatus: "连接状态: 未连接", videoStatus: "视频: 未启动", footerText: "© 2025 数字人交互平台 | 基于WebRTC的下一代AI交互系统" },
+    en: { controlPanel: "Control Panel", useStun: "Use STUN Server", start: "Start", stop: "Stop", recording: "Recording Control", startRecording: "Start Recording", stopRecording: "Stop Recording", asrResultTitle: "ASR Result (Subtitles)", interaction: "Digital Human Interaction", inputText: "Input Text", inputPlaceholder: "Enter text or just speak...", send: "Send", mediaDisplay: "Media Display", connectionStatus: "Connection: Disconnected", videoStatus: "Video: Not Started", footerText: "© 2025 Digital Human Platform | Next-gen AI Interaction System" }
   };
   let currentLang = 'zh';
-
 
   const applyTranslations = () => {
     $('[data-translate]').each(function() {
       const key = $(this).data('translate');
-      if ($(this).data('dynamic') !== true) {
-        $(this).text(translations[currentLang][key]);
-      }
+      $(this).text(translations[currentLang][key]);
     });
     const placeholderKey = $('#message').data('translate-placeholder');
-    if(placeholderKey) {
+    if (placeholderKey) {
       $('#message').attr('placeholder', translations[currentLang][placeholderKey]);
     }
   };
 
-
-  const initVisualizer = () => {
-    const barsContainer = $('#visualizer-bars');
-    if (barsContainer.children().length > 0) return;
-    for (let i = 0; i < 32; i++) {
-      barsContainer.append('<div class="bar"></div>');
-    }
-    setInterval(() => {
-      $('.bar').each(function() {
-        $(this).css('height', (Math.floor(Math.random() * 80) + 10) + '%');
-      });
-    }, 100);
-  };
-
-
-  const showMessageSentFeedback = () => {
-    const btn = $('#echo-form button[type="submit"]');
-    const originalText = btn.find('span').text();
-    btn.prop('disabled', true).find('span').text(currentLang === 'zh' ? '发送中...' : 'Sending...');
-    setTimeout(() => {
-      btn.find('span').text(currentLang === 'zh' ? '✓ 已发送' : '✓ Sent');
-      setTimeout(() => {
-        btn.find('span').text(originalText);
-        btn.prop('disabled', false);
-      }, 1500);
-    }, 800);
-  };
-
-  if(window.digitalHumanPageInitialized) return;
+  if (window.digitalHumanPageInitialized) return;
   window.digitalHumanPageInitialized = true;
 
   // --- 事件绑定 ---
-  $('#start').on('click', window.start);
-  $('#stop').on('click', window.stop);
+  $('#start').on('click', function() {
+    window.start(); // 简化注释：调用client.js中的全局start函数
+    startAsrPolling(); // 简化注释：在建立连接的同时，开始轮询ASR结果
+  });
+
+  $('#stop').on('click', function() {
+    window.stop(); // 简化注释：调用client.js中的全局stop函数
+    stopAsrPolling(); // 简化注释：在断开连接的同时，停止轮询ASR结果
+  });
 
   $('.lang-btn').on('click', function() {
     $('.lang-btn').removeClass('active');
@@ -181,93 +217,73 @@ const initializePageLogic = () => {
 
   $('#echo-form').on('submit', function(e) {
     e.preventDefault();
-    const message = $('#message').val();
     const sessionid = parseInt($('#sessionid').val(), 10);
     if (sessionid === 0) {
       alert('请先点击“开始”建立连接！');
       return;
     }
 
-    console.log('Sending to Ollama:', message);
+    // 简化注释：优先使用语音识别的文本，如果为空，再使用输入框的文本
+    let message = asrText.value.trim();
+    if (!message) {
+      message = $('#message').val();
+    }
 
-    // 用于累积Ollama的响应
+    if (!message) {
+      alert('请输入或说出您想发送的内容！');
+      return;
+    }
+
+    console.log('发送给Ollama:', message);
+
     let fullResponse = '';
-
-    // 1. (修改) 定义系统提示词，并添加 /no_think 指令以关闭内部推理
     const systemPrompt = '你是芝麻编程的老师，请你说中文并热心简短回复，禁止输出任何表情符号 /no_think';
-
-    // 构建包含 system 和 user 消息的数组
     const messagesForOllama = [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: message }
     ];
 
-    // 调用Ollama服务
     streamChat(
-        'qwen3:0.6b', // 2. (修改) 直接指定使用的模型为 'qwen3:0.6b'
+        'qwen3:0.6b',
         messagesForOllama,
         (chunk) => {
-          // 实时处理流式数据
           fullResponse += chunk;
           ollamaResponse.value = fullResponse;
         },
         () => {
-          // 流结束时的回调
-          console.log('Ollama stream finished. Full response:', fullResponse);
-
-          // 3. (新增) 清理Ollama响应中不需要的文本
-          const cleanedResponse = fullResponse.replace(/\*其他接受然后\*/g, '').replace(/<think>[\s\S]*?<\/think>/g, '').trim(); // 清理无用文字并移除所有 <think> 标签及内部内容:contentReference[oaicite:0]{index=0}
-
-          console.log('Cleaned response sent to human:', cleanedResponse);
-
-          // 将清理后的Ollama完整响应发送给数字人
+          console.log('Ollama流结束，完整回复:', fullResponse);
+          const cleanedResponse = fullResponse.replace(/\*其他接受然后\*/g, '').replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+          console.log('清理后发送给数字人的回复:', cleanedResponse);
           fetch('/human', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            // 4. (修改) 使用清理后的响应
             body: JSON.stringify({ text: cleanedResponse, type: 'echo', interrupt: true, sessionid: sessionid })
-          }).then(res => res.json()).then(data => console.log('Human response:', data)).catch(err => console.error('Human error:', err));
-
-          showMessageSentFeedback();
+          });
         },
-        new AbortController().signal // 中止信号
+        new AbortController().signal
     );
 
-    $('#message').val('');
-  });
-
-  $('#btn_start_record').on('click', function() {
-    $(this).prop('disabled', true);
-    $('#btn_stop_record').prop('disabled', false);
-  });
-
-  $('#btn_stop_record').on('click', function() {
-    $(this).prop('disabled', true);
-    $('#btn_start_record').prop('disabled', false);
+    $('#message').val(''); // 简化注释：提交后清空输入框
+    asrText.value = ''; // 简化注释：提交后也清空字幕区，准备下一次对话
   });
 
   // --- 初始调用 ---
   applyTranslations();
-  initVisualizer();
 };
 
-// Vue 组件挂载后执行
+// --- Vue生命周期钩子 ---
 onMounted(async () => {
   try {
-    // 按顺序加载必要的 JS 库
     await loadScript('/js/jquery-3.6.0.min.js');
-    await loadScript('/js/sockjs.min.js');
-    await loadScript('/js/client.js');
-
-    // 所有脚本加载完毕后，初始化页面逻辑
+    await loadScript('/js/client.js'); // 简化注释：确保client.js在初始化逻辑前加载
     initializePageLogic();
   } catch (error) {
     console.error("初始化数字人页面失败:", error);
   }
 });
 
-// Vue 组件卸载时执行清理
 onUnmounted(() => {
+  stopAsrPolling(); // 简化注释：组件卸载时确保停止轮询，防止内存泄漏
   loadedScripts.forEach(s => s.remove());
   loadedScripts = [];
   window.digitalHumanPageInitialized = false;
@@ -277,7 +293,22 @@ onUnmounted(() => {
 <style>
 /* Using a non-scoped style tag to ensure styles are applied globally within this component, just like the original file. */
 /* The root wrapper class '.digital-human-body-wrapper' helps prevent these styles from leaking out. */
-
+/* 简化注释：为新增的ASR结果面板添加一些基本样式 */
+.asr-result-container {
+  background-color: #2c2c2e;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 12px;
+  min-height: 80px;
+  color: #e0e0e0;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap; /* 简化注释：让文字可以自动换行 */
+  word-wrap: break-word;
+}
+#asr-text {
+  margin: 0;
+}
 .digital-human-body-wrapper {
   /* CSS Variables */
   --primary: #00c6ff;
@@ -309,7 +340,7 @@ header { display: flex; justify-content: space-between; align-items: center; pad
 .language-switch { display: flex; gap: 10px; align-items: center; }
 .lang-btn { padding: 8px 20px; background: var(--card-bg); border: 1px solid rgba(100, 255, 218, 0.3); color: var(--text-light); border-radius: 30px; cursor: pointer; font-weight: 500; transition: all 0.3s ease; }
 .lang-btn:hover, .lang-btn.active { background: var(--primary); color: var(--dark-bg); border-color: var(--primary); }
-.main-content { display: grid; grid-template-columns: 1fr 600px; gap: 30px; }
+.main-content { display: grid; grid-template-columns: 1fr 800px; gap: 30px; }
 .panel { background: var(--card-bg); border-radius: 16px; padding: 25px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); border: 1px solid rgba(100, 255, 218, 0.1); position: relative; overflow: hidden; }
 .panel::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(100, 255, 218, 0.05) 0%, rgba(0, 0, 0, 0) 70%); pointer-events: none; }
 .panel h2 { font-size: 22px; margin-bottom: 20px; color: var(--accent); display: flex; align-items: center; gap: 10px; }
